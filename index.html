@@ -467,9 +467,36 @@
 
     // Botón “mi ubicación” con seguimiento en tiempo real
     let userMarker = null, userCircle = null;
-    document.getElementById('locateBtn').addEventListener('click', () => {
-      map.locate({ setView: False, watch: true, enableHighAccuracy: true, maxZoom: 18 });
+    // NUEVO: estado de seguimiento y referencia al botón
+    let following = false;
+    const locateBtn = document.getElementById('locateBtn');
+
+    //document.getElementById('locateBtn').addEventListener('click', () => {
+     // map.locate({ setView: true, watch: true, enableHighAccuracy: true, maxZoom: 18 });
+    //});
+
+    locateBtn.addEventListener('click', () => {
+      // Alterna el modo "seguir"
+      following = !following;
+    
+      // (Opcional) Cambia el texto/tooltip del botón
+      locateBtn.title = following ? 'Dejar de seguir mi ubicación' : 'Seguir mi ubicación';
+      // Si quieres también cambiar el contenido del botón, descomenta la siguiente línea:
+      // locateBtn.textContent = following ? '📍 Siguiendo' : '📍';
+    
+      if (following) {
+        // Centra una sola vez cuando llegue el próximo fix
+        map.once('locationfound', (e) => {
+          map.setView(e.latlng, Math.max(map.getZoom(), 17));
+        });
+        // Empieza a seguir en tiempo real, sin re-centrar automáticamente cada actualización
+        map.locate({ setView: false, watch: true, enableHighAccuracy: true, maxZoom: 18 });
+      } else {
+        // Deja de escuchar actualizaciones de ubicación
+        map.stopLocate();
+      }
     });
+    
     map.on('locationfound', (e) => {
       const { latlng, accuracy } = e;
       if (!userMarker) {
@@ -483,6 +510,8 @@
         userCircle.setLatLng(latlng);
         userCircle.setRadius(accuracy);
       }
+      // NUEVO: solo recentrar si el modo "seguir" está activo
+      if (following) map.panTo(latlng);
     });
     map.on('locationerror', () => {
       alert('No fue posible obtener tu ubicación. Verifica permisos del navegador.');
