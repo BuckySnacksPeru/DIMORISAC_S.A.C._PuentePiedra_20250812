@@ -69,6 +69,16 @@
       pointer-events: none;
     }
 
+    .filters.hidden { display: none; }
+
+    /* botón flotante para mostrar/ocultar filtros */
+    .filters-toggle {
+      position: absolute; top: 10px; right: 10px; z-index: 1100;
+      background: #005af0; color: #fff; border: 0; border-radius: 10px;
+      padding: 8px 10px; box-shadow: var(--shadow); font-family: var(--font);
+      cursor: pointer;
+    }
+
     /* Leyenda */
     .legend {
       position: absolute; bottom: 10px; left: 10px; z-index: 1000;
@@ -91,7 +101,10 @@
       <select id="f-prov" multiple></select>
 
       <label for="f-dist">Distrito</label>
-      <select id="f-dist" multiple></select>
+      <select id="f-dist" multiple></select  >
+
+      <label for="f-ruta">Ruta</label>
+      <select id="f-ruta" multiple></select>
     </div>
     <div class="actions">
       <button class="btn-apply" id="applyFilters">Aplicar</button>
@@ -99,6 +112,8 @@
     </div>
     <small style="display:block;margin-top:6px;color:#666">Ctrl/Cmd+clic para seleccionar varios</small>
   </div>
+
+  <button id="filterToggle" class="filters-toggle">Ocultar filtros</button>
 
   <!-- Indicador de zoom -->
   <div class="zoom-indicator">Zoom: <span id="zoomLevel">—</span></div>
@@ -124,6 +139,16 @@
 
     // Crear mapa base
     const map = L.map('map', { zoomControl: true });
+    // Toggle del panel de filtros (ocultar/mostrar)
+    const filtersEl = document.querySelector('.filters');
+    const toggleBtn = document.getElementById('filterToggle');
+    toggleBtn.addEventListener('click', () => {
+      filtersEl.classList.toggle('hidden');
+      toggleBtn.textContent = filtersEl.classList.contains('hidden')
+        ? 'Mostrar filtros'
+        : 'Ocultar filtros';
+    });
+    
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 20, attribution: '&copy; OpenStreetMap'
     }).addTo(map);
@@ -324,25 +349,31 @@
         const deps  = uniqueNonEmpty(allPointFeatures.map(f => f.properties?.Departamentos));
         const provs = uniqueNonEmpty(allPointFeatures.map(f => f.properties?.Provincias));
         const dists = uniqueNonEmpty(allPointFeatures.map(f => f.properties?.Distritos));
+        const rutas = uniqueNonEmpty(allPointFeatures.map(f => f.properties?.Ruta));
+
         fillSelect(document.getElementById('f-dep'),  deps);
         fillSelect(document.getElementById('f-prov'), provs);
         fillSelect(document.getElementById('f-dist'), dists);
+        fillSelect(document.getElementById('f-ruta'), rutas);
 
         // Aplicar/limpiar filtros
         function applyFilters() {
           const selDep  = selectedValues(document.getElementById('f-dep'));
           const selProv = selectedValues(document.getElementById('f-prov'));
           const selDist = selectedValues(document.getElementById('f-dist'));
-
-          const routeVisibility = new Map(); // Ruta -> visible (para polígonos)
-
+          const selRuta = selectedValues(document.getElementById('f-ruta'));
+        
+          // Guardamos qué rutas quedaron visibles por los puntos (para sincronizar polígonos)
+          const routeVisibility = new Map(); // Ruta -> visible
+        
           for (const it of labelItems) {
             const p = it.props || {};
             const okDep  = selDep.length  === 0 || selDep.includes(p.Departamentos);
             const okProv = selProv.length === 0 || selProv.includes(p.Provincias);
             const okDist = selDist.length === 0 || selDist.includes(p.Distritos);
-            const visible = !!(okDep && okProv && okDist);
-
+            const okRuta = selRuta.length === 0 || selRuta.includes(p.Ruta);
+            const visible = !!(okDep && okProv && okDist && okRuta);
+        
             if (visible) {
               it.marker.addTo(pointsLayer);
               it.labelMarker.addTo(labelsLayer);
@@ -354,26 +385,35 @@
               linesLayer.removeLayer(it.line);
             }
           }
-
-          // Polígonos: mostrar solo los de rutas que quedaron visibles por los puntos
+        
+          // Polígonos: mostrar solo los de rutas que quedaron visibles y además respetar zoom
           if (polygonsLayer) {
+            const withinZoom = map.getZoom() >= ZOOM_SHOW_POLYGONS;
+        
             polygonsLayer.eachLayer(layer => {
               const ruta = layer.feature?.properties?.Ruta;
-              const show = routeVisibility.size === 0 || !!routeVisibility.get(ruta);
-              if (show) {
+              const passesRutaFilter = (selRuta.length === 0) || selRuta.includes(ruta);
+              const hasVisiblePoints = !!routeVisibility.get(ruta);
+        
+              // Bandera persistente de si pasa el filtro (se usa también en togglePolygonsByZoom)
+              const visibleByFilter = passesRutaFilter && hasVisiblePoints;
+              layer._visibleByFilter = visibleByFilter;
+        
+              const shouldBeOn = withinZoom && visibleByFilter;
+              if (shouldBeOn) {
                 layer.addTo(map);
               } else {
                 map.removeLayer(layer);
               }
             });
           }
-
+        
           updateAllLabels();
-          togglePolygonsByZoom();  // respetar umbral de zoom
+          togglePolygonsByZoom(); // asegura coherencia con el umbral de zoom
         }
 
         function clearFilters() {
-          for (const id of ['f-dep','f-prov','f-dist']) {
+          for (const id of ['f-dep','f-prov','f-dist','f-ruta']) {   // 👈 añade 'f-ruta' aquí
             const sel = document.getElementById(id);
             for (const opt of sel.options) opt.selected = false;
           }
