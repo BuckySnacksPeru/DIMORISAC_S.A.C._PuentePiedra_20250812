@@ -201,6 +201,8 @@
         polygonsLayer = L.geoJSON(geo, {
           style: () => ({ color: '#E33111', weight: 2, fillColor: '#E33111', fillOpacity: 0.10 })
         }).addTo(map);
+        // ✅ Por defecto, todos pasan el filtro hasta que el usuario aplique algo
+        polygonsLayer.eachLayer(layer => { layer._visibleByFilter = true; });
 
         if (polygonsLayer.getLayers().length > 0) {
           map.fitBounds(polygonsLayer.getBounds(), { padding: [20,20] });
@@ -445,11 +447,28 @@
       .catch(err => console.error('Error cargando puntos:', err));
 
     // Mostrar/ocultar polígonos por zoom
+    //function togglePolygonsByZoom() {
+    //  if (!polygonsLayer) return;
+    //  const show = map.getZoom() >= ZOOM_SHOW_POLYGONS;
+    //  polygonsLayer.eachLayer(layer => {
+    //    if (show) layer.addTo(map); else map.removeLayer(layer);
+    //  });
+    //}
+
     function togglePolygonsByZoom() {
       if (!polygonsLayer) return;
-      const show = map.getZoom() >= ZOOM_SHOW_POLYGONS;
+      const withinZoom = map.getZoom() >= ZOOM_SHOW_POLYGONS;
+    
       polygonsLayer.eachLayer(layer => {
-        if (show) layer.addTo(map); else map.removeLayer(layer);
+        // Si nunca se filtró, _visibleByFilter quedará undefined → trátalo como true
+        const visibleByFilter = (layer._visibleByFilter !== false);
+        const shouldBeOn = withinZoom && visibleByFilter;
+    
+        if (shouldBeOn) {
+          layer.addTo(map);
+        } else {
+          map.removeLayer(layer);
+        }
       });
     }
 
