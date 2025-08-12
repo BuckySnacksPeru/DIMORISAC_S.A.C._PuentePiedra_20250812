@@ -69,6 +69,13 @@
       pointer-events: none;
     }
 
+    /* por si Leaflet inyecta clase base del divIcon */
+    .leaflet-div-icon {
+      background: transparent !important;
+      border: 0 !important;
+      box-shadow: none !important;
+    }
+
     .filters.hidden { display: none; }
 
     /* botón flotante para mostrar/ocultar filtros */
@@ -246,7 +253,8 @@
 
 
         // ==== Recolocación inteligente de etiquetas (sin solaparse) ====
-        const SPIRAL_RADII = [18, 24, 30, 36, 42, 50]; // radios en px
+        //const SPIRAL_RADII = [18, 24, 30, 36, 42, 50]; // radios en px
+        const SPIRAL_RADII = [14, 18, 22, 28, 34, 40];
         const SPIRAL_DIRS = [
           {x: 1, y:-1}, // NE  ← primera opción (diagonal)
           {x:-1, y:-1}, // NO
