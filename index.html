@@ -468,7 +468,7 @@
     // Botón “mi ubicación” con seguimiento en tiempo real
     let userMarker = null, userCircle = null;
     document.getElementById('locateBtn').addEventListener('click', () => {
-      map.locate({ setView: true, watch: true, enableHighAccuracy: true, maxZoom: 18 });
+      map.locate({ setView: False, watch: true, enableHighAccuracy: true, maxZoom: 18 });
     });
     map.on('locationfound', (e) => {
       const { latlng, accuracy } = e;
