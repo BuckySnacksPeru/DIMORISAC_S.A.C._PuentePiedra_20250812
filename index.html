@@ -56,9 +56,17 @@
     /* Estilos de puntos y etiquetas */
     .label {
       background: transparent;
-      color: rgba(0,102,255,0.9); padding: 2px 6px; border-radius: 6px; white-space: nowrap;
-      font: 12px/1.2 var(--font); border: 0; font-weight: bold;
-      box-shadow: transparent;
+      color: rgba(0,102,255,0.9);
+      padding: 0 3px;          /* antes: 2px 6px */
+      margin: 0;
+      border-radius: 3px;      /* más pequeño */
+      white-space: nowrap;
+      font: 12px/1.1 var(--font);
+      border: 0;
+      font-weight: bold;
+      box-shadow: none;
+      display: inline-block;   /* caja del tamaño del texto */
+      pointer-events: none;
     }
 
     /* Leyenda */
@@ -247,35 +255,55 @@
         function placeLabelFor(item, placedBoxes) {
           const baseLL = L.latLng(item.lat, item.lng);
           const basePx = map.project(baseLL, map.getZoom());
-          const size   = getLabelSize(item);
-
-          // Probar posiciones en espiral (arriba primero). Colocamos en la primera libre.
+          const size   = getLabelSize(item); // {w,h}
+        
+          // Probamos posiciones en espiral (arriba primero). Colocamos en la primera libre.
           for (const off of CANDIDATE_OFFSETS) {
-            const candPx = L.point(basePx.x + off.x, basePx.y + off.y);
+            const candPx = L.point(basePx.x + off.x, basePx.y + off.y);   // esquina SUP-IZQ de la etiqueta
             const candLL = map.unproject(candPx, map.getZoom());
-
-            // Ubicar provisionalmente el label para luego fijarlo
+        
+            // Ubicamos provisionalmente la etiqueta en esa esquina
             item.labelMarker.setLatLng(candLL);
-
+        
+            // Caja en píxeles de la etiqueta (para evitar solapes)
             const box = { x1: candPx.x, y1: candPx.y, x2: candPx.x + size.w, y2: candPx.y + size.h };
+        
+            // ¿choca con alguna ya puesta?
             let collide = false;
             for (const b of placedBoxes) { if (overlaps(box, b)) { collide = true; break; } }
             if (!collide) {
               placedBoxes.push(box);
-              // Línea guía: desde el punto hasta la posición elegida (será diagonal si corresponde)
-              item.line.setLatLngs([baseLL, candLL]);
+        
+              // PUNTO DE ANCLA DE LA LÍNEA: borde del rectángulo más cercano al punto
+              // Regla: si el label quedó a la derecha (off.x > 0) conecto al borde IZQ;
+              // si quedó a la izquierda, al borde DER. Análogo con arriba/abajo en Y.
+              const attachPx = L.point(
+                (off.x >= 0 ? box.x1 : box.x2),
+                (off.y >= 0 ? box.y1 : box.y2)
+              );
+              const attachLL = map.unproject(attachPx, map.getZoom());
+        
+              item.line.setLatLngs([baseLL, attachLL]);  // ¡ahora sí al borde del texto!
               return;
             }
           }
-
-          // Si ninguna posición queda libre, NO ocultamos: usamos la última del espiral
+        
+          // Si ninguna posición quedó libre, usamos la última candidata
           const lastOff = CANDIDATE_OFFSETS[CANDIDATE_OFFSETS.length - 1];
           const lastPx  = L.point(basePx.x + lastOff.x, basePx.y + lastOff.y);
           const lastLL  = map.unproject(lastPx, map.getZoom());
-            item.labelMarker.setLatLng(lastLL);
-            placedBoxes.push({ x1: lastPx.x, y1: lastPx.y, x2: lastPx.x + size.w, y2: lastPx.y + size.h });
-            item.line.setLatLngs([baseLL, lastLL]);
+          item.labelMarker.setLatLng(lastLL);
+        
+          const lastBox = { x1: lastPx.x, y1: lastPx.y, x2: lastPx.x + size.w, y2: lastPx.y + size.h };
+          placedBoxes.push(lastBox);
+        
+          const fallbackAttachPx = L.point(
+            (lastOff.x >= 0 ? lastBox.x1 : lastBox.x2),
+            (lastOff.y >= 0 ? lastBox.y1 : lastBox.y2)
+          );
+          item.line.setLatLngs([baseLL, map.unproject(fallbackAttachPx, map.getZoom())]);
         }
+
 
         let rafId = null;
         function updateAllLabels() {
