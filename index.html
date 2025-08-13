@@ -525,10 +525,18 @@
         iconSize: [20, 20],
         iconAnchor: [10, 10] // para centrar el cuadrado en la ubicación
       });
+
+      // Icono circular azul con borde blanco
+      const blueCircleIcon = L.divIcon({
+        className: '', // sin clases base de Leaflet
+        html: '<div style="width:20px;height:20px;background:#005af0;border:2px solid white;border-radius:50%;"></div>',
+        iconSize: [20, 20],
+        iconAnchor: [10, 10] // centra el círculo en la posición
+      });
       
       if (!userMarker) {
         // userMarker = L.marker(latlng).addTo(map);
-        userMarker = L.marker(latlng, { icon: blueSquareIcon }).addTo(map);
+        userMarker = L.marker(latlng, { icon: blueCircleIcon }).addTo(map);
       } else {
         userMarker.setLatLng(latlng);
       }
