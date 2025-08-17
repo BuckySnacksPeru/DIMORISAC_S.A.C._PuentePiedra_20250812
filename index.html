@@ -137,8 +137,37 @@
 
   <script>
     // === Rutas a tus archivos (con espacios: usamos encodeURI) ===
-    const POINTS_URL = encodeURI('./data/DIMORISAC S.A.C._PuentePiedra_PuntosPublicos_20250810.geojson');
-    const POLYS_URL  = encodeURI('./data/DIMORISAC S.A.C._PuentePiedra_PoligonosPublicos_20250810.geojson');
+    // const POINTS_URL = encodeURI('./data/DIMORISAC S.A.C._PuentePiedra_PuntosPublicos_20250810.geojson');
+    // const POLYS_URL  = encodeURI('./data/DIMORISAC S.A.C._PuentePiedra_PoligonosPublicos_20250810.geojson');
+    let POINTS_URL, POLYS_URL;
+
+    // === Cargar configuración desde config.json ===
+    fetch('./config.json')
+      .then(r => r.json())
+      .then(config => {
+        const prefix = config.client_prefix;
+        const datetime = config.now;
+        const naming = config.naming;
+  
+        // Construir nombres de archivo a partir de naming
+        const pointsFile = naming.public_points
+          .replace('{prefix}', prefix)
+          .replace('{datetime}', datetime);
+        const polysFile = naming.public_polygons
+          .replace('{prefix}', prefix)
+          .replace('{datetime}', datetime);
+  
+        // Rutas completas
+        POINTS_URL = encodeURI(`./data/${pointsFile}`);
+        POLYS_URL  = encodeURI(`./data/${polysFile}`);
+  
+        console.log("Cargando puntos desde:", POINTS_URL);
+        console.log("Cargando polígonos desde:", POLYS_URL);
+  
+        // ✅ Ahora sí iniciar el resto del mapa
+        initMap(config.web);
+      })
+      .catch(err => console.error("Error cargando config.json:", err));
 
     // Umbrales de zoom para mostrar polígonos y etiquetas
     const ZOOM_SHOW_POLYGONS = 14;
