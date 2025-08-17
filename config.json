@@ -1,6 +1,6 @@
 {
   "input_csv": "BD_PDV.csv",
-  "client_prefix": "DIMORISAC_S.A.C._PuentePiedra",
+  "client_prefix": "DIMORISAC S.A.C._PuentePiedra",
   "filtros": {
     "Departamentos": [
       "LimaProvince"
